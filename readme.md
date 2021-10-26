@@ -1,7 +1,8 @@
 # BES
-> paper: Weakly Supervised Semantic Segmentation with Boundary Exploration. [[pdf]](https://www.ecva.net/papers/eccv_2020/papers_ECCV/papers/123710341.pdf)
 
-In this paper, we propose a two-stage framework to tackle semantic segmentation problem with image-level annotation supervision. In the first stage, Attention-pooling CAM is adopted to obtain coarse localization cues, which will be used to synthesize pseudo object boundary labels, in second stage, the prediction of object boundaries will be refined through BENet and direct the propagation of CAM results.
+Forked from https://github.com/mt-cly/BES
+
+> paper: Weakly Supervised Semantic Segmentation with Boundary Exploration. [[pdf]](https://www.ecva.net/papers/eccv_2020/papers_ECCV/papers/123710341.pdf)
 
 ## USAGE
 This code heavily depends on the [IRN](https://github.com/jiwoon-ahn/irn). 
@@ -49,8 +50,5 @@ python run_sample.py --voc12_root xxxxx
 ## References
 <a id="reference_1">[1]</a>: Ahn J, Kwak S. Learning pixel-level semantic affinity with image-level supervision for weakly supervised semantic segmentation[C]//Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2018: 4981-4990.
 
-<a id="reference_2">[2]</a>: Ahn J, Cho S, Kwak S. Weakly supervised learning of instance segmentation with inter-pixel relations[C]//Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2019: 2209-2218.
-
-## PS
-If there is any bug or confusion, I am glad to discuss with you. Sorry for my delayed release, I have spent a long time in TOEFL test and PhD application (I get failed and look forward a RA position now).  
+<a id="reference_2">[2]</a>: Ahn J, Cho S, Kwak S. Weakly supervised learning of instance segmentation with inter-pixel relations[C]//Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2019: 2209-2218. 
 
