@@ -3,7 +3,9 @@ import torch
 from torch.utils.data import Dataset
 import os.path
 import imageio
+# import imutils
 from misc import imutils
+import pickle
 
 IMG_FOLDER_NAME = "JPEGImages"
 ANNOT_FOLDER_NAME = "Annotations"
@@ -21,6 +23,7 @@ N_CAT = len(CAT_LIST)
 CAT_NAME_TO_NUM = dict(zip(CAT_LIST, range(len(CAT_LIST))))
 
 cls_labels_dict = np.load('voc12/cls_labels.npy', allow_pickle=True).item()
+# cls_labels_dict = np.load('cls_labels.npy', allow_pickle=True).item()
 
 
 def decode_int_filename(int_filename):
@@ -49,10 +52,13 @@ def load_image_label_from_xml(img_name, voc12_root):
 def load_image_label_list_from_xml(img_name_list, voc12_root):
     return [load_image_label_from_xml(img_name, voc12_root) for img_name in img_name_list]
 
-
 def load_image_label_list_from_npy(img_name_list):
     return np.array([cls_labels_dict[img_name] for img_name in img_name_list])
 
+def load_image_size_list_from_npy(img_name, path = './dataset/SegmentationClassAugSize/'):
+    with open(path + img_name + '.pkl', 'rb') as f:
+        return torch.from_numpy(np.array(list(pickle.load(f).values()), dtype = np.float64))
+    
 
 def get_img_path(img_name, voc12_root):
     if not isinstance(img_name, str):
@@ -61,7 +67,7 @@ def get_img_path(img_name, voc12_root):
 
 
 def load_img_name_list(dataset_path):
-    img_name_list = np.loadtxt(dataset_path, dtype=np.int32)
+    img_name_list = np.loadtxt(dataset_path, dtype = np.int32)
 
     return img_name_list
 
@@ -147,6 +153,7 @@ class VOC12ClassificationDataset(VOC12ImageDataset):
         out = super().__getitem__(idx)
 
         out['label'] = torch.from_numpy(self.label_list[idx])
+        out['size'] = load_image_size_list_from_npy(out['name'])
 
         return out
 
@@ -234,6 +241,8 @@ class VOC12SegmentationDataset(Dataset):
         if not self.label_scale == 1:
             label = imutils.pil_rescale(label, self.label_scale, 0)
 
-        return {'name': name, 'img': img, 'label': label}
+        size = load_image_size_list_from_npy(name_str)
+
+        return {'name': name, 'img': img, 'label': label, 'size': size}
 
 

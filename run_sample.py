@@ -24,11 +24,17 @@ if __name__ == '__main__':
 
     # Environment
     parser.add_argument("--num_workers", default=os.cpu_count() // 2, type=int)
-    parser.add_argument("--voc12_root", default='/home/cly/datasets/VOC2012', type=str,
+    parser.add_argument("--voc12_root", default='/home/s2bashar/Desktop/Thesis/BES/dataset/', type=str,
                         help="Path to VOC 2012 Devkit, must contain ./JPEGImages as subdirectory.")
 
     # Dataset
-    parser.add_argument("--train_aug_list", default="voc12/train_aug.txt", type=str)
+    parser.add_argument("--train_aug_list", default="voc12/train_aug_2val2.txt", type=str)
+
+
+
+
+
+    
     parser.add_argument("--train_list", default="voc12/train.txt", type=str)
     parser.add_argument("--val_list", default="voc12/val.txt", type=str)
     parser.add_argument("--test_list", default="voc12/test.txt", type=str)
@@ -41,8 +47,15 @@ if __name__ == '__main__':
     parser.add_argument("--cam_network", default="net.resnet50_cam", type=str)
     parser.add_argument("--cam_crop_size", default=512, type=int)
     parser.add_argument("--cam_batch_size", default=16, type=int)
-    parser.add_argument("--cam_num_epoches", default=5, type=int)
-    parser.add_argument("--cam_learning_rate", default=0.1, type=float)
+
+
+
+    parser.add_argument("--cam_num_epoches", default = 8, type=int) #here
+    parser.add_argument("--cam_learning_rate", default = 0.1, type=float) #here
+
+
+
+
     parser.add_argument("--cam_weight_decay", default=1e-4, type=float)
     parser.add_argument("--cam_eval_thres", default=0.11, type=float)
     parser.add_argument("--cam_scales", default=(1.0, 0.5, 1.5, 2.0),
@@ -62,8 +75,8 @@ if __name__ == '__main__':
     parser.add_argument("--bes_network", default="net.resnet50_bes", type=str)
     parser.add_argument("--bes_crop_size", default=512, type=int)
     parser.add_argument("--bes_batch_size", default=16, type=int)
-    parser.add_argument("--bes_num_epoches", default=3, type=int)
-    parser.add_argument("--bes_learning_rate", default=0.1, type=float)
+    parser.add_argument("--bes_num_epoches", default=30, type=int) #here
+    parser.add_argument("--bes_learning_rate", default=0.1, type=float) #here
     parser.add_argument("--bes_weight_decay", default=1e-4, type=float)
 
     # Random Walk Params
@@ -121,26 +134,26 @@ if __name__ == '__main__':
         timer = pyutils.Timer('step.eval_cam:')
         step.eval_cam.run(args)
 
-    if args.make_boundary_label_pass is True:
-        import step.make_boundary_label
+    # if args.make_boundary_label_pass is True:
+    #     import step.make_boundary_label
 
-        timer = pyutils.Timer('step.cam_to_boundary_label:')
-        step.make_boundary_label.run(args)
+    #     timer = pyutils.Timer('step.cam_to_boundary_label:')
+    #     step.make_boundary_label.run(args)
 
-    if args.train_bes_pass is True:
-        import step.train_bes
+    # if args.train_bes_pass is True:
+    #     import step.train_bes
 
-        timer = pyutils.Timer('step.train_bes:')
-        step.train_bes.run(args)
+    #     timer = pyutils.Timer('step.train_bes:')
+    #     step.train_bes.run(args)
 
-    if args.make_sem_seg_pass is True:
-        import step.make_sem_seg
+    # if args.make_sem_seg_pass is True:
+    #     import step.make_sem_seg
 
-        timer = pyutils.Timer('step.make_sem_seg:')
-        step.make_sem_seg.run(args)
+    #     timer = pyutils.Timer('step.make_sem_seg:')
+    #     step.make_sem_seg.run(args)
 
-    if args.eval_sem_seg_pass is True:
-        import step.eval_sem_seg
+    # if args.eval_sem_seg_pass is True:
+    #     import step.eval_sem_seg
 
-        timer = pyutils.Timer('step.eval_sem_seg:')
-        step.eval_sem_seg.run(args)
+    #     timer = pyutils.Timer('step.eval_sem_seg:')
+    #     step.eval_sem_seg.run(args)

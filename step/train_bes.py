@@ -13,7 +13,15 @@ import voc12.dataloader
 from misc import pyutils, torchutils
 from net.resnet50_bes import Boundary
 
+from net.resnet50_size import RESNET50_SIZE
+
 def run(args):
+    
+    c_output = 21
+    mean = torch.Tensor([0.485, 0.456, 0.406])[None, ..., None, None].cuda()
+    std = torch.Tensor([0.229, 0.224, 0.225])[None, ..., None, None].cuda()
+
+
     model = Boundary()
     train_dataset = voc12.dataloader.VOC12SegmentationDataset(img_name_list_path=args.train_aug_list,
                                                               label_dir=args.boundary_label_dir,
@@ -34,6 +42,7 @@ def run(args):
     ], lr=args.bes_learning_rate, weight_decay=args.bes_weight_decay, max_step=max_step)
 
     model = torch.nn.DataParallel(model).cuda()
+    net = RESNET50_SIZE(c_output).cuda()
     model.train()
 
     avg_meter = pyutils.AverageMeter()
@@ -48,8 +57,12 @@ def run(args):
 
             img = pack['img']
             label = pack['label'].cuda(non_blocking=True)
+            size = pack['size'].cuda()
 
             predict = model(img).squeeze().clamp(min=1e-4, max=1 - 1e-4)
+            img_size = (img.cuda() - mean) / std
+            predict_size, _, _ = net(img_size)
+
 
             mask_bg_ground = (label == args.boundary_labels['BG']).type(torch.float32)
             mask_fg_ground = (label == args.boundary_labels['FG']).type(torch.float32)
@@ -57,12 +70,28 @@ def run(args):
             # mask_boundary = (label == args.boundary_labels['BOUNDARY_FG_BG']).type(torch.float32)
 
             loss_bg_ground = (-torch.log(1 - predict) * mask_bg_ground).sum() / (mask_bg_ground.sum() + 1)
+
             loss_fg_ground = (-torch.log(1 - predict) * mask_fg_ground).sum() / (mask_fg_ground.sum() + 1)
+
             loss_ground = (loss_fg_ground + loss_bg_ground)/2
             loss_boundary = (-torch.log(predict) * torch.pow(predict.detach(), 0.5) * mask_boundary).sum() / (mask_boundary.sum() + 1)
 
-            loss = (loss_ground + loss_boundary)
-            avg_meter.add({'loss1': loss_ground.item(), 'loss2': loss_boundary.item()})
+
+            predict_size = predict_size.mean(3).mean(2)
+
+            weight = [1e-3, 1e-2, 1e-1, 1, 10, 20, 50, 100, 200, 500]
+            
+            N_c, C = predict_size.shape
+            sum_N_c = 0
+
+            for n in range(N_c):
+                sum_C = torch.sum((predict_size[n] - size[n].cuda()) ** 2)
+                sum_N_c += sum_C / C
+
+            loss_size = weight[2] * sum_N_c / N_c
+
+            loss = loss_ground + loss_boundary + loss_size
+            avg_meter.add({'loss': loss.item(),'loss1': loss_ground.item(), 'loss2': loss_boundary.item(), 'loss_size': loss_size.item()})
 
             optimizer.zero_grad()
             loss.backward()
@@ -71,9 +100,11 @@ def run(args):
             if (optimizer.global_step - 1) % 100 == 0:
                 timer.update_progress(optimizer.global_step / max_step)
 
-                print('step:%5d/%5d' % (optimizer.global_step - 1, max_step),
+                print('step:%5d /%5d' % (optimizer.global_step - 1, max_step),
+                      'loss:%.4f' % (avg_meter.pop('loss')),
                       'loss1:%.4f' % (avg_meter.pop('loss1')),
                       'loss2:%.4f' % (avg_meter.pop('loss2')),
+                      'loss_size:%.4f' % (avg_meter.pop('loss_size')),
                       'imps:%.1f' % ((step + 1) * args.bes_batch_size / timer.get_stage_elapsed()),
                       'lr: %.4f' % (optimizer.param_groups[0]['lr']),
                       'etc:%s' % (timer.str_estimated_complete()), flush=True)

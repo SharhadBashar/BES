@@ -11,6 +11,7 @@ import voc12.dataloader
 from misc import pyutils, torchutils
 
 
+
 def validate(model, data_loader):
     print('validating ... ', flush=True, end='')
 
@@ -25,6 +26,7 @@ def validate(model, data_loader):
             label = pack['label'].cuda(non_blocking=True)
 
             x = model(img)
+            # here?
             loss1 = F.multilabel_soft_margin_loss(x, label)
 
             val_loss_meter.add({'loss': loss1.item()})
@@ -37,6 +39,10 @@ def validate(model, data_loader):
 
 
 def run(args):
+    mean = torch.Tensor([0.485, 0.456, 0.406])[None, ..., None, None].cuda()
+    std = torch.Tensor([0.229, 0.224, 0.225])[None, ..., None, None].cuda()
+
+
     model = CAM()
     '''
     original resize_long is set as '(320, 640)', parts of image would be cropped if 'resize_long' is bigger than 
@@ -75,11 +81,35 @@ def run(args):
 
             img = pack['img']
             label = pack['label'].cuda(non_blocking=True)
+            size = pack['size'].cuda()
 
             x = model(img)
-            loss = F.multilabel_soft_margin_loss(x, label)
 
-            avg_meter.add({'loss': loss.item()})
+            img_size = (img.cuda() - mean) / std
+
+            x_size = model(img_size)
+            
+            weights = [1e-3, 1e-2, 1e-1, 1, 10, 20, 50, 100, 200, 500]
+            
+            N_c, C = x_size.shape
+            sum_N_c = 0
+
+            for n in range(N_c):
+                sum_C = torch.sum((x_size[n] - size[n, 1:].cuda()) ** 2)
+                sum_N_c += sum_C / C
+
+            # if (ep <= 1 and step <= 200): weight = weights[0]
+            # else: weight = weights[2]
+            weight = weights[0]
+
+            loss_size = weight * sum_N_c / N_c
+            
+
+            loss_cam = F.multilabel_soft_margin_loss(x, label) 
+
+            loss = loss_cam + loss_size
+
+            avg_meter.add({'loss': loss.item(), 'loss_cam': loss_cam.item(), 'loss_size_cam': loss_size})
 
             optimizer.zero_grad()
             loss.backward()
@@ -88,8 +118,11 @@ def run(args):
             if (optimizer.global_step - 1) % 100 == 0:
                 timer.update_progress(optimizer.global_step / max_step)
 
-                print('step:%5d/%5d' % (optimizer.global_step - 1, max_step),
+                print(step, weight,
+                      'step:%5d /%5d' % (optimizer.global_step - 1, max_step),
                       'loss:%.4f' % (avg_meter.pop('loss')),
+                      'loss_cam:%.4f' % (avg_meter.pop('loss_cam')),
+                      'loss_size:%.4f' % (avg_meter.pop('loss_size_cam')),
                       'imps:%.1f' % ((step + 1) * args.cam_batch_size / timer.get_stage_elapsed()),
                       'lr: %.4f' % (optimizer.param_groups[0]['lr']),
                       'etc:%s' % (timer.str_estimated_complete()), flush=True)
